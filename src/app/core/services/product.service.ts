@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '../../../environments/environment';
-import { ProductCategory, ProductModel, ProductsResponse } from '../models/product.model';
+import { AddProductRequest, DeletedProductModel, ProductCategory, ProductModel, ProductsResponse, UpdateProductRequest } from '../models/product.model';
 import { Observable } from 'rxjs';
 
 @Injectable({
@@ -31,5 +31,22 @@ export class ProductService {
 
   getCategoryList(): Observable<string[]> {
     return this.http.get<string[]>(`${this.apiUrl}/products/category-list`);
+  }
+
+  getProductsByCategory(category: string, limit = 10, skip = 0): Observable<ProductsResponse> {
+    const params = new HttpParams().set("limit", limit).set("skip", skip);
+    return this.http.get<ProductsResponse>(`${this.apiUrl}/products/${category}`, {params})
+  }
+
+  addProduct(data: AddProductRequest): Observable<ProductModel> {
+    return this.http.post<ProductModel>(`${this.apiUrl}/products/add`, data);
+  }
+
+  updateProduct(id: number, data: UpdateProductRequest): Observable<ProductModel> {
+    return this.http.put<ProductModel>(`${this.apiUrl}/products/${id}`, data);
+  }
+
+  deleteProduct(id: number): Observable<DeletedProductModel> {
+    return this.http.delete<DeletedProductModel>(`${this.apiUrl}/products/${id}`);
   }
 }
