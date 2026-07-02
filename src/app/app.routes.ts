@@ -5,6 +5,10 @@ export const routes: Routes = [
     ...AUTH_ROUTES,
 
     {
+        path: "products",
+        loadChildren: () => import("./features/products/products.routes").then(r => r.PRODUCTS_ROUTES)
+    },
+    {
         path: "",
         redirectTo: "login",
         pathMatch: "full"
@@ -12,9 +16,5 @@ export const routes: Routes = [
     {
         path: "**",
         redirectTo: "login"
-    },
-    {
-        path: "products",
-        loadChildren: () => import("./features/products/products.routes").then(r => r.PRODUCTS_ROUTES)
     }
 ];

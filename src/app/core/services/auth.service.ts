@@ -1,9 +1,10 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { environment } from '../../../environments/environment';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { AuthUser, LoginRequest, LoginResponse } from '../models/auth.model';
 import { map, Observable, tap } from 'rxjs';
 import { UserRole } from '../models/user.model';
+import { SKIP_AUTH } from '../interceptors/skip-auth.token';
 
 @Injectable({
   providedIn: 'root',
@@ -28,7 +29,9 @@ export class AuthService {
   });
 
   login(data: LoginRequest): Observable<AuthUser> {
-    return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, data).pipe(
+    return this.http.post<LoginResponse>(`${this.apiUrl}/auth/login`, data, {
+      context: new HttpContext().set(SKIP_AUTH, true)
+    }).pipe(
       map(response => {
         const role = this.getFakeRole(response.id);
 

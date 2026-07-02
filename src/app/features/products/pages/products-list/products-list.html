@@ -1,1 +1,46 @@
-<p>products-list works!</p>
+<div class="products-page">
+    <input #searchBox type="text" placeholder="Search products..." (input)="onSearch(searchBox.value)">
+
+
+    @if (productStore.isLoading()) {
+        <p>Loading products...</p>
+    }
+
+    @if (productStore.errorState(); as error) {
+        <p class="error">{{ error }}</p>
+    }
+
+    <!-- PRODUCTS -->
+     <div class="products-grid">
+
+        @for (product of productStore.allProducts(); track product.id) {
+            <div class="product-card">
+                <img [src]="product.thumbnail" alt="Product Thumbnail">
+
+                <h3>{{product.title}}</h3>
+                <p>{{product.price}}$</p>
+
+                <button [routerLink]="['/products', product.id]">
+                    View Details
+                </button>
+            </div>
+        }
+     </div>
+
+    <!-- PAGINATION -->
+     <div class="pagination">
+        @for (page of productStore.pages(); track page) {
+            <button
+                (click)="goToPage(page)"
+                >
+                {{page}}
+            </button>
+        }
+     </div>
+
+
+
+
+
+
+</div>
