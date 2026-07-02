@@ -1,3 +1,5 @@
+import { ProductModel } from "./product.model";
+
 export interface CartsResponse {
   carts: CartModel[];
   total: number;
@@ -24,4 +26,9 @@ export interface CartProductModel {
   discountPercentage: number;
   discountedTotal: number;
   thumbnail: string;
+}
+
+export interface LocalCartItem {
+  product: ProductModel;
+  quantity: number;
 }
