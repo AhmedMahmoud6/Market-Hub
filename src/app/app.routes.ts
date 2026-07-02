@@ -12,5 +12,9 @@ export const routes: Routes = [
     {
         path: "**",
         redirectTo: "login"
+    },
+    {
+        path: "products",
+        loadChildren: () => import("./features/products/products.routes").then(r => r.PRODUCTS_ROUTES)
     }
 ];
