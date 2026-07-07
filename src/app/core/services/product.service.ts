@@ -16,7 +16,13 @@ export class ProductService {
     // const params = new HttpParams().set("limit", limit).set("skip", skip);
     return this.http.get<ProductsResponse>(`${this.apiUrl}/products`, {params: {
       limit: params.limit,
-      skip: params.skip
+      skip: params.skip,
+      ...(params.sortBy && {
+          sortBy: params.sortBy
+       }),
+      ...(params.order && {
+          order: params.order
+       })
     }})
   }
 
@@ -29,7 +35,13 @@ export class ProductService {
     return this.http.get<ProductsResponse>(`${this.apiUrl}/products/search`, {params: {
       q: params.query,
       limit: params.limit,
-      skip: params.skip
+      skip: params.skip,
+      ...(params.sortBy && {
+          sortBy: params.sortBy
+       }),
+      ...(params.order && {
+          order: params.order
+       })
     }})
   }
 
@@ -43,9 +55,15 @@ export class ProductService {
 
   getProductsByCategory(params: ProductCategoryParams): Observable<ProductsResponse> {
     // const params = new HttpParams().set("limit", limit).set("skip", skip);
-    return this.http.get<ProductsResponse>(`${this.apiUrl}/products/${params.category}`, {params: {
+    return this.http.get<ProductsResponse>(`${this.apiUrl}/products/category/${params.category}`, {params: {
       limit: params.limit,
-      skip: params.skip
+      skip: params.skip,
+      ...(params.sortBy && {
+          sortBy: params.sortBy
+       }),
+      ...(params.order && {
+          order: params.order
+       })
     }})
   }
 

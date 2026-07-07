@@ -1,0 +1,27 @@
+<select (change)="onCategoryChange($event)">
+    <option value="">All Categories</option>
+
+    <option value="smartphones">
+        Smartphones
+    </option>
+
+    <option value="laptops">
+        Laptops
+    </option>
+
+</select>
+
+
+<select (change)="onSortChange($event)">
+  <option value="none">
+    None
+  </option>
+
+  <option value="price-asc">
+    Price Low to High
+  </option>
+
+  <option value="price-desc">
+    Price High to Low
+  </option>
+</select>

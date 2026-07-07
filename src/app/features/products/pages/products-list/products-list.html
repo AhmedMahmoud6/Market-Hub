@@ -1,6 +1,10 @@
 <div class="products-page">
     <input #searchBox type="text" placeholder="Search products..." [value]="productStore.query()" (input)="onSearch(searchBox.value)">
 
+    <app-product-filter
+    (categoryChange)="changeCategory($event)"
+    (sortChange)="changeSort($event)"
+    ></app-product-filter>
 
     @if (productStore.isLoading()) {
         <p>Loading products...</p>

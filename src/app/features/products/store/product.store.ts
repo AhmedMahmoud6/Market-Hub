@@ -2,7 +2,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { ProductModel, ProductsResponse } from '../../../core/models/product.model';
 import { PaginationParams } from '../../../core/models/api-response.model';
 import { ProductService } from '../../../core/services/product.service';
-import { catchError, debounceTime, distinctUntilChanged, finalize, Observable, of, OperatorFunction, pipe, Subject, switchMap, tap } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, filter, finalize, Observable, of, OperatorFunction, pipe, Subject, switchMap, tap } from 'rxjs';
 import { productState } from './product.state';
 
 @Injectable({
@@ -21,9 +21,9 @@ export class ProductStore {
     error: null,
     searchQuery: '',
     filter: {
-      category: "",
-      order: "asc",
-      sortBy: ""
+      category: null,
+      order: null,
+      sortBy: null
     },
     pagination: {
       limit: 10,
@@ -171,53 +171,107 @@ export class ProductStore {
 
       distinctUntilChanged(),
 
-      tap(() => {
-        this.setLoading(true);
-        this.setError(null);
-      }),
+      // switchMap(query => {
 
-      switchMap(query => {
+      //   const {limit, skip} = this.pageInfo();
 
-        const {limit, skip} = this.pageInfo();
+      //   // if the search is empty
+      //   if (!query.trim()) {
 
-        if (!query.trim()) {
-          return this.productService.getProducts({limit, skip});
-        }
+      //     const {category} = this.filters();
 
-        return this.productService.searchProducts({query, limit, skip});
-      }),
-      this.handleRequest("Search Failed")
-    ).subscribe(res => {
-      if (!res) return;
+      //     // if the search is empty and we're filtering products with category 
+      //     if (category) return this.productService.getProductsByCategory({category, limit, skip});
+          
+      //     // if the search is empty and there's no filtering
+      //     return this.productService.getProducts({limit, skip});
+      //   }
 
-      this.updateProducts(res);
-      
+      //   // if there's a search
+      //   return this.productService.searchProducts({query, limit, skip});
+      // }),
+      // this.handleRequest("Search Failed")
+    ).subscribe(() => {
+      // singe source of truth
+      this.loadProducts();
     })
   }
 
   filterProducts() {}
 
-  searchWithPagination(): void {
-    this.setLoading(true);
+  // searchWithPagination(): void {
+  //   this.setLoading(true);
 
-    const {limit, skip} = this.pageInfo();
+  //   const {limit, skip} = this.pageInfo();
 
-    this.executeRequest(
-      this.productService.searchProducts({query: this.query(), limit, skip}),
-      res => this.updateProducts(res),
-      "Failed to load products"
-    )
-  }
+  //   this.executeRequest(
+  //     this.productService.searchProducts({query: this.query(), limit, skip}),
+  //     res => this.updateProducts(res),
+  //     "Failed to load products"
+  //   )
+  // }
 
+  // single source of truth for selecting which mode are we in for loading products
   loadProducts(): void {
 
     const {limit, skip} = this.pageInfo();
+    const {
+      category,
+      sortBy,
+      order
+    } = this.filters();
     
+    // if there's a search then it's priority is higher than filtering 
+    if (this.isSearchMode()) {
+      this.executeRequest(
+        this.productService.searchProducts({query: this.query(), limit, skip, order, sortBy}),
+        res => this.updateProducts(res),
+        "Search Failed"
+      );
+
+      return;
+    }
+
+    // filter products by category
+    if (category) {
+      this.executeRequest(
+        this.productService.getProductsByCategory({category, limit, skip, order, sortBy}),
+        res => this.updateProducts(res),
+        "Failed to load products"
+      )
+
+      return;
+    }
+
     this.executeRequest(
-      this.productService.getProducts({limit, skip}),
+      this.productService.getProducts({limit, skip, order, sortBy}),
       res => this.updateProducts(res),
       "Failed to load products"
     );
+  }
+
+  changeSort(
+    sortBy: string | null,
+    order: 'asc' | 'desc' | null
+  ) {
+
+    this.state.update(state => ({
+      ...state,
+
+      filter: {
+        ...state.filter,
+        sortBy,
+        order
+      },
+
+      pagination:{
+        ...state.pagination,
+        skip:0
+      }
+
+    }));
+
+    this.loadProducts();
   }
 
   loadProductsById(productId: number): void {
@@ -237,24 +291,19 @@ export class ProductStore {
   }
 
   searchProducts(query: string): void {
-    if (!this.query().trim() && query.trim()) {
-      this.state.update(state => ({
-        ...state,
-        pagination: {
-          ...state.pagination,
-          skip: 0
-        }
-      }))
-    }
-
     this.state.update(state => ({
       ...state,
-      searchQuery: query
-    }));
+      searchQuery: query,
+      pagination: {
+        ...state.pagination,
+        skip: 0
+      }
+    }))
+    
     this.searchSubject.next(query);
   }
 
-  changeCategory(category: string) {
+  changeCategory(category: string | null) {
     this.state.update(state => ({
       ...state,
       filter: {
@@ -280,11 +329,30 @@ export class ProductStore {
       }
     }))
 
-    if (this.isSearchMode()) {
-      this.searchWithPagination();
-    } else {
-      this.loadProducts();
-    }
+    this.loadProducts();
+    
+  }
+
+  clearFilters(){
+    this.state.update(state => ({
+      ...state,
+
+      searchQuery:'',
+
+      filter:{
+        category:null,
+        sortBy:null,
+        order:null
+      },
+
+      pagination:{
+        ...state.pagination,
+        skip:0
+      }
+    }));
+
+    this.loadProducts();
+
   }
 
   reset() {
@@ -295,9 +363,9 @@ export class ProductStore {
     error: null,
     searchQuery: '',
     filter: {
-      category: "",
-      order: "asc",
-      sortBy: ""
+      category: null,
+      order: null,
+      sortBy: null
     },
     pagination: {
       limit: 10,
