@@ -13,4 +13,16 @@ export interface productState {
     searchQuery: string;
 
     pagination: PaginationParams;
+
+    filter: ProductFilters;
+}
+
+export interface ProductFilters {
+
+  category: string | null;
+
+  sortBy: string | null;
+
+  order: 'asc' | 'desc' | null;
+
 }

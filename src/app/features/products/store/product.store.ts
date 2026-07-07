@@ -20,6 +20,11 @@ export class ProductStore {
     loading: false,
     error: null,
     searchQuery: '',
+    filter: {
+      category: "",
+      order: "asc",
+      sortBy: ""
+    },
     pagination: {
       limit: 10,
       skip: 0,
@@ -56,6 +61,10 @@ export class ProductStore {
   readonly isSearchMode = computed(() => !!this.state().searchQuery.trim());
 
   readonly pageInfo = computed(() => this.state().pagination);
+
+  readonly filters = computed(() =>
+  this.state().filter
+);
 
   totalPages = computed(() => {
     const p = this.pageInfo();
@@ -172,10 +181,10 @@ export class ProductStore {
         const {limit, skip} = this.pageInfo();
 
         if (!query.trim()) {
-          return this.productService.getProducts(limit, skip);
+          return this.productService.getProducts({limit, skip});
         }
 
-        return this.productService.searchProducts(query, limit, skip);
+        return this.productService.searchProducts({query, limit, skip});
       }),
       this.handleRequest("Search Failed")
     ).subscribe(res => {
@@ -186,13 +195,15 @@ export class ProductStore {
     })
   }
 
+  filterProducts() {}
+
   searchWithPagination(): void {
     this.setLoading(true);
 
     const {limit, skip} = this.pageInfo();
 
     this.executeRequest(
-      this.productService.searchProducts(this.query(), limit, skip),
+      this.productService.searchProducts({query: this.query(), limit, skip}),
       res => this.updateProducts(res),
       "Failed to load products"
     )
@@ -203,7 +214,7 @@ export class ProductStore {
     const {limit, skip} = this.pageInfo();
     
     this.executeRequest(
-      this.productService.getProducts(limit, skip),
+      this.productService.getProducts({limit, skip}),
       res => this.updateProducts(res),
       "Failed to load products"
     );
@@ -243,6 +254,23 @@ export class ProductStore {
     this.searchSubject.next(query);
   }
 
+  changeCategory(category: string) {
+    this.state.update(state => ({
+      ...state,
+      filter: {
+        ...state.filter,
+        category
+      },
+
+      pagination: {
+        ...state.pagination,
+        skip: 0
+      }
+    }))
+
+    this.loadProducts();
+  }
+
   changePage(page: number): void {
     this.state.update(state => ({
       ...state,
@@ -266,6 +294,11 @@ export class ProductStore {
     loading: false,
     error: null,
     searchQuery: '',
+    filter: {
+      category: "",
+      order: "asc",
+      sortBy: ""
+    },
     pagination: {
       limit: 10,
       skip: 0,

@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { AddProductRequest, DeletedProductModel, ProductCategory, ProductModel, ProductsResponse, UpdateProductRequest } from '../models/product.model';
 import { Observable } from 'rxjs';
+import { ProductCategoryParams, ProductListParams, ProductSearchParams } from '../../features/products/models/product-query-params.model';
 
 @Injectable({
   providedIn: 'root',
@@ -11,18 +12,25 @@ export class ProductService {
   private http = inject(HttpClient);
   private apiUrl = environment.apiUrl;
 
-  getProducts(limit = 10, skip = 0): Observable<ProductsResponse> {
-    const params = new HttpParams().set("limit", limit).set("skip", skip);
-    return this.http.get<ProductsResponse>(`${this.apiUrl}/products`, {params})
+  getProducts(params: ProductListParams): Observable<ProductsResponse> {
+    // const params = new HttpParams().set("limit", limit).set("skip", skip);
+    return this.http.get<ProductsResponse>(`${this.apiUrl}/products`, {params: {
+      limit: params.limit,
+      skip: params.skip
+    }})
   }
 
   getProductById(id: number): Observable<ProductModel> {
     return this.http.get<ProductModel>(`${this.apiUrl}/products/${id}`)
   }
 
-  searchProducts(query: string, limit = 10, skip = 0): Observable<ProductsResponse> {
-    const params = new HttpParams().set("q", query).set("limit", limit).set("skip", skip);
-    return this.http.get<ProductsResponse>(`${this.apiUrl}/products/search`, {params})
+  searchProducts(params: ProductSearchParams): Observable<ProductsResponse> {
+    // const params = new HttpParams().set("q", query).set("limit", limit).set("skip", skip);
+    return this.http.get<ProductsResponse>(`${this.apiUrl}/products/search`, {params: {
+      q: params.query,
+      limit: params.limit,
+      skip: params.skip
+    }})
   }
 
   getCategories(): Observable<ProductCategory> {
@@ -33,9 +41,12 @@ export class ProductService {
     return this.http.get<string[]>(`${this.apiUrl}/products/category-list`);
   }
 
-  getProductsByCategory(category: string, limit = 10, skip = 0): Observable<ProductsResponse> {
-    const params = new HttpParams().set("limit", limit).set("skip", skip);
-    return this.http.get<ProductsResponse>(`${this.apiUrl}/products/${category}`, {params})
+  getProductsByCategory(params: ProductCategoryParams): Observable<ProductsResponse> {
+    // const params = new HttpParams().set("limit", limit).set("skip", skip);
+    return this.http.get<ProductsResponse>(`${this.apiUrl}/products/${params.category}`, {params: {
+      limit: params.limit,
+      skip: params.skip
+    }})
   }
 
   addProduct(data: AddProductRequest): Observable<ProductModel> {
