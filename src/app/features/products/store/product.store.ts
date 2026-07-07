@@ -20,7 +20,7 @@ export class ProductStore {
   private error = signal<string | null>(null);
 
   private searchQuery = signal<string>('');
-  private isSearchMode = signal(false);
+  // private isSearchMode = signal(false);
   private searchSubject = new Subject<string>();
 
   private pagination = signal<PaginationParams>({
@@ -40,6 +40,7 @@ export class ProductStore {
   readonly errorState = this.error.asReadonly();
 
   readonly query = this.searchQuery.asReadonly();
+  readonly isSearchMode = computed(() => !!this.searchQuery().trim())
 
   readonly pageInfo = this.pagination.asReadonly();
 
@@ -81,11 +82,9 @@ export class ProductStore {
         this.error.set(null);
 
         if (!query.trim()) {
-          this.isSearchMode.set(false);
           return this.productService.getProducts(this.pagination().limit, 0);
         }
 
-        this.isSearchMode.set(true);
         return this.productService.searchProducts(query);
       }),
       catchError(() => {
@@ -110,7 +109,6 @@ export class ProductStore {
   loadProducts(): void {
     this.loading.set(true);
     this.error.set(null);
-    this.isSearchMode.set(false);
 
     const {limit, skip} = this.pagination();
     
@@ -170,7 +168,6 @@ export class ProductStore {
     this.selectedProduct.set(null);
     this.error.set(null);
     this.searchQuery.set('');
-    this.isSearchMode.set(false);
     this.pagination.set({
       limit: 10,
       skip: 0,
