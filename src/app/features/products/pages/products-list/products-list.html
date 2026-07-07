@@ -1,5 +1,5 @@
 <div class="products-page">
-    <input #searchBox type="text" placeholder="Search products..." (input)="onSearch(searchBox.value)">
+    <input #searchBox type="text" placeholder="Search products..." [value]="productStore.query()" (input)="onSearch(searchBox.value)">
 
 
     @if (productStore.isLoading()) {

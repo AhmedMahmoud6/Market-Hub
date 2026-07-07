@@ -66,6 +66,11 @@ export class ProductStore {
   private productService = inject(ProductService);
 
   constructor() {
+    this.pagination.update(p => ({
+      ...p,
+      skip: 0,
+      limit: 10,
+    }))
     this.initSearchStream();
   }
 
@@ -81,11 +86,15 @@ export class ProductStore {
         this.loading.set(true);
         this.error.set(null);
 
+        const {limit, skip} = this.pagination();
+
         if (!query.trim()) {
-          return this.productService.getProducts(this.pagination().limit, 0);
+          return this.productService.getProducts(limit, skip);
         }
 
-        return this.productService.searchProducts(query);
+        
+
+        return this.productService.searchProducts(query, limit, skip);
       }),
       catchError(() => {
         this.error.set('Search Failed');
@@ -103,6 +112,29 @@ export class ProductStore {
           total: res.total
         }))
       }
+    })
+  }
+
+  searchWithPagination(): void {
+
+    const {limit, skip} = this.pagination();
+
+    this.loading.set(true);
+
+    this.productService.searchProducts(this.query(), limit, skip).pipe(
+      finalize(() => this.loading.set(false)),
+      catchError(() => {
+        this.error.set("Failed to load products")
+        return of(null);
+      })
+    ).subscribe(res => {
+      if (!res) return;
+
+      this.products.set(res.products);
+      this.pagination.update(p => ({
+        ...p,
+        total: res.total
+      }))
     })
   }
 
@@ -146,6 +178,13 @@ export class ProductStore {
   }
 
   searchProducts(query: string): void {
+    if (!this.searchQuery().trim() && query.trim()) {
+      this.pagination.update(p => ({
+        ...p,
+        skip: 0
+      }));
+    }
+
     this.searchQuery.set(query);
     this.searchSubject.next(query);
   }
@@ -157,7 +196,7 @@ export class ProductStore {
     }));
 
     if (this.isSearchMode()) {
-      this.searchSubject.next(this.searchQuery());
+      this.searchWithPagination();
     } else {
       this.loadProducts();
     }

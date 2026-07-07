@@ -13,7 +13,11 @@ export class ProductsList implements OnInit {
   productStore = inject(ProductStore);
 
   ngOnInit(): void {
-    this.productStore.loadProducts();
+    if (this.productStore.isSearchMode()) {
+      this.productStore.searchWithPagination();
+    } else {
+      this.productStore.loadProducts();
+    }
   }
 
   goToPage(page: number) {
