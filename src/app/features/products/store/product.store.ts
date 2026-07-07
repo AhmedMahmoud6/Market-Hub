@@ -1,8 +1,9 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { ProductModel } from '../../../core/models/product.model';
+import { ProductModel, ProductsResponse } from '../../../core/models/product.model';
 import { PaginationParams } from '../../../core/models/api-response.model';
 import { ProductService } from '../../../core/services/product.service';
-import { catchError, debounceTime, distinctUntilChanged, finalize, of, Subject, switchMap } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, finalize, of, OperatorFunction, pipe, Subject, switchMap } from 'rxjs';
+import { productState } from './product.state';
 
 @Injectable({
   providedIn: 'root',
@@ -13,39 +14,51 @@ export class ProductStore {
   // 1. STATE (Signals)
   // ======================
 
-  private products = signal<ProductModel[]>([]);
-  private selectedProduct = signal<ProductModel | null>(null);
+  private state = signal<productState>({
+    products: [],
+    selectedProduct: null,
+    loading: false,
+    error: null,
+    searchQuery: '',
+    pagination: {
+      limit: 10,
+      skip: 0,
+      total: 0
+    }
+  });
 
-  private loading = signal(false);
-  private error = signal<string | null>(null);
+  // private products = signal<ProductModel[]>([]);
+  // private selectedProduct = signal<ProductModel | null>(null);
 
-  private searchQuery = signal<string>('');
-  // private isSearchMode = signal(false);
+  // private loading = signal(false);
+  // private error = signal<string | null>(null);
+
+  // private searchQuery = signal<string>('');
   private searchSubject = new Subject<string>();
 
-  private pagination = signal<PaginationParams>({
-    limit: 10,
-    skip: 0,
-    total: 0
-  });
+  // private pagination = signal<PaginationParams>({
+  //   limit: 10,
+  //   skip: 0,
+  //   total: 0
+  // });
 
   // ======================
   // 2. COMPUTED VALUES
   // ======================
 
-  readonly allProducts = this.products.asReadonly();
-  readonly currentProduct = this.selectedProduct.asReadonly();
+  readonly allProducts = computed(() => this.state().products);
+  readonly currentProduct = computed(() => this.state().selectedProduct) ;
 
-  readonly isLoading = this.loading.asReadonly();
-  readonly errorState = this.error.asReadonly();
+  readonly isLoading = computed(() => this.state().loading);
+  readonly errorState = computed(() => this.state().error);
 
-  readonly query = this.searchQuery.asReadonly();
-  readonly isSearchMode = computed(() => !!this.searchQuery().trim())
+  readonly query = computed(() => this.state().searchQuery);
+  readonly isSearchMode = computed(() => !!this.state().searchQuery.trim());
 
-  readonly pageInfo = this.pagination.asReadonly();
+  readonly pageInfo = computed(() => this.state().pagination);
 
   totalPages = computed(() => {
-    const p = this.pagination();
+    const p = this.pageInfo();
     return Math.ceil(p.total / p.limit);
   });
 
@@ -57,7 +70,7 @@ export class ProductStore {
     );
   }) 
 
-  readonly hasProducts = computed(() => this.products().length > 0);
+  readonly hasProducts = computed(() => this.state().products.length > 0);
 
   // ======================
   // 3. Service
@@ -66,11 +79,6 @@ export class ProductStore {
   private productService = inject(ProductService);
 
   constructor() {
-    this.pagination.update(p => ({
-      ...p,
-      skip: 0,
-      limit: 10,
-    }))
     this.initSearchStream();
   }
 
@@ -78,122 +86,138 @@ export class ProductStore {
   // 4. ACTIONS
   // ======================
 
+  private updateProducts(res: ProductsResponse) {
+
+    this.state.update(state => ({
+      ...state,
+      products: res.products,
+      pagination: {
+        ...state.pagination,
+        total: res.total
+      }
+    }));
+  }
+
+  private setLoading(loading: boolean) {
+    this.state.update(state => ({
+      ...state,
+      loading
+    }));
+  }
+
+  private setError(error: string | null) {
+    this.state.update(state => ({
+      ...state,
+      error
+    }));
+  }
+
+  private handleRequest<T>(errorMessage: string):OperatorFunction<T, T | null> {
+    return pipe (
+      finalize(() => this.setLoading(false)),
+      catchError(() => {
+        this.setError(errorMessage);
+        return of(null);
+      })
+    )
+  }
+  
   private initSearchStream(): void {
     this.searchSubject.pipe(
       debounceTime(300),
       distinctUntilChanged(),
       switchMap(query => {
-        this.loading.set(true);
-        this.error.set(null);
 
-        const {limit, skip} = this.pagination();
+        this.setLoading(true);
+        this.setError(null);
+
+        const {limit, skip} = this.pageInfo();
 
         if (!query.trim()) {
           return this.productService.getProducts(limit, skip);
         }
 
-        
-
         return this.productService.searchProducts(query, limit, skip);
       }),
-      catchError(() => {
-        this.error.set('Search Failed');
-        return of(null);
-      })
+      this.handleRequest("Search Failed")
     ).subscribe(res => {
       if (!res) return;
 
-      this.products.set(res.products);
-      this.loading.set(false);
-
-      if ('total' in res) {
-        this.pagination.update(p => ({
-          ...p,
-          total: res.total
-        }))
-      }
+      this.updateProducts(res);
+      
     })
   }
 
   searchWithPagination(): void {
+    this.setLoading(true);
 
-    const {limit, skip} = this.pagination();
-
-    this.loading.set(true);
+    const {limit, skip} = this.pageInfo();
 
     this.productService.searchProducts(this.query(), limit, skip).pipe(
-      finalize(() => this.loading.set(false)),
-      catchError(() => {
-        this.error.set("Failed to load products")
-        return of(null);
-      })
+      this.handleRequest("Failed to load products")
     ).subscribe(res => {
       if (!res) return;
 
-      this.products.set(res.products);
-      this.pagination.update(p => ({
-        ...p,
-        total: res.total
-      }))
+      this.updateProducts(res);
     })
   }
 
   loadProducts(): void {
-    this.loading.set(true);
-    this.error.set(null);
+    this.setLoading(true);
+    this.setError(null);
 
-    const {limit, skip} = this.pagination();
+    const {limit, skip} = this.pageInfo();
     
     this.productService.getProducts(limit, skip).pipe(
-      finalize(() => this.loading.set(false)),
-      catchError(err => {
-        this.error.set('Failed to load products');
-        return of(null);
-      })
+      this.handleRequest("Failed to load products")
     ).subscribe(res => {
       if (!res) return;
 
-      this.products.set(res.products);
-      this.pagination.update(p => ({
-        ...p,
-        total: res.total
-      }));
+      this.updateProducts(res);
     })
   }
 
   loadProductsById(productId: number): void {
-    this.loading.set(true);
-    this.error.set(null);
+    this.setLoading(true);
+    this.setError(null);
 
     this.productService.getProductById(productId).pipe(
-      finalize(() => this.loading.set(false)),
-      catchError(err => {
-        this.error.set('Failed to load product');
-        return of(null);
-      })
+      this.handleRequest("Failed to load products")
     ).subscribe(res => {
       if (!res) return;
-      this.selectedProduct.set(res);
+      this.state.update(state => ({
+        ...state,
+        selectedProduct: res
+      }))
     });
   }
 
   searchProducts(query: string): void {
-    if (!this.searchQuery().trim() && query.trim()) {
-      this.pagination.update(p => ({
-        ...p,
-        skip: 0
-      }));
+    if (!this.query().trim() && query.trim()) {
+      this.state.update(state => ({
+        ...state,
+        pagination: {
+          ...state.pagination,
+          skip: 0
+        }
+      }))
     }
 
-    this.searchQuery.set(query);
+    this.state.update(state => ({
+      ...state,
+      searchQuery: query
+    }));
     this.searchSubject.next(query);
   }
 
   changePage(page: number): void {
-    this.pagination.update(p => ({
-      ...p,
-      skip: (page - 1) * p.limit
-    }));
+    this.state.update(state => ({
+      ...state,
+      pagination: {
+        ...state.pagination,
+        skip: (page - 1) * state.pagination.limit
+      }
+    }))
 
     if (this.isSearchMode()) {
       this.searchWithPagination();
@@ -203,14 +227,18 @@ export class ProductStore {
   }
 
   reset() {
-    this.products.set([]);
-    this.selectedProduct.set(null);
-    this.error.set(null);
-    this.searchQuery.set('');
-    this.pagination.set({
+    this.state.set(({
+    products: [],
+    selectedProduct: null,
+    loading: false,
+    error: null,
+    searchQuery: '',
+    pagination: {
       limit: 10,
       skip: 0,
       total: 0
-    });
-  };
+    }
+  }));
+  
+  }
 }
