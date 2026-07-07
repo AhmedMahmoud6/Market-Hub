@@ -2,7 +2,7 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { ProductModel, ProductsResponse } from '../../../core/models/product.model';
 import { PaginationParams } from '../../../core/models/api-response.model';
 import { ProductService } from '../../../core/services/product.service';
-import { catchError, debounceTime, distinctUntilChanged, finalize, of, OperatorFunction, pipe, Subject, switchMap } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, finalize, Observable, of, OperatorFunction, pipe, Subject, switchMap, tap } from 'rxjs';
 import { productState } from './product.state';
 
 @Injectable({
@@ -86,6 +86,40 @@ export class ProductStore {
   // 4. ACTIONS
   // ======================
 
+  // abstraction for any request 
+  /*
+    START
+    |
+    loading = true
+    |
+    error = null
+    |
+    API CALL
+    |
+    success → update data
+    |
+    error → set error
+    |
+    finally → loading=false
+  */
+  private executeRequest<T>(
+    request$: Observable<T>,
+    onSuccess: (response: T) => void,
+    errorMessage: string
+  ) {
+    this.setLoading(true);
+    this.setError(null);
+
+    request$.pipe(
+      this.handleRequest(errorMessage)
+    ).subscribe(res => {
+      if (!res) return;
+
+      onSuccess(res);
+    });
+
+  }
+
   private updateProducts(res: ProductsResponse) {
 
     this.state.update(state => ({
@@ -125,11 +159,15 @@ export class ProductStore {
   private initSearchStream(): void {
     this.searchSubject.pipe(
       debounceTime(300),
-      distinctUntilChanged(),
-      switchMap(query => {
 
+      distinctUntilChanged(),
+
+      tap(() => {
         this.setLoading(true);
         this.setError(null);
+      }),
+
+      switchMap(query => {
 
         const {limit, skip} = this.pageInfo();
 
@@ -153,43 +191,38 @@ export class ProductStore {
 
     const {limit, skip} = this.pageInfo();
 
-    this.productService.searchProducts(this.query(), limit, skip).pipe(
-      this.handleRequest("Failed to load products")
-    ).subscribe(res => {
-      if (!res) return;
-
-      this.updateProducts(res);
-    })
+    this.executeRequest(
+      this.productService.searchProducts(this.query(), limit, skip),
+      res => this.updateProducts(res),
+      "Failed to load products"
+    )
   }
 
   loadProducts(): void {
-    this.setLoading(true);
-    this.setError(null);
 
     const {limit, skip} = this.pageInfo();
     
-    this.productService.getProducts(limit, skip).pipe(
-      this.handleRequest("Failed to load products")
-    ).subscribe(res => {
-      if (!res) return;
-
-      this.updateProducts(res);
-    })
+    this.executeRequest(
+      this.productService.getProducts(limit, skip),
+      res => this.updateProducts(res),
+      "Failed to load products"
+    );
   }
 
   loadProductsById(productId: number): void {
-    this.setLoading(true);
-    this.setError(null);
 
-    this.productService.getProductById(productId).pipe(
-      this.handleRequest("Failed to load products")
-    ).subscribe(res => {
-      if (!res) return;
-      this.state.update(state => ({
-        ...state,
-        selectedProduct: res
-      }))
-    });
+    this.executeRequest(
+      this.productService.getProductById(productId),
+
+      product => {
+        this.state.update(state => ({
+          ...state,
+          selectedProduct: product
+        }))
+      },
+
+      "Failed to load products"
+    )
   }
 
   searchProducts(query: string): void {
@@ -227,7 +260,7 @@ export class ProductStore {
   }
 
   reset() {
-    this.state.set(({
+    this.state.set({
     products: [],
     selectedProduct: null,
     loading: false,
@@ -238,7 +271,7 @@ export class ProductStore {
       skip: 0,
       total: 0
     }
-  }));
+  });
   
   }
 }
