@@ -2,6 +2,7 @@ import { Component, inject, OnInit } from '@angular/core';
 import { ProductStore } from '../../store/product.store';
 import { RouterLink } from "@angular/router";
 import { ProductFilter } from "../../components/product-filter/product-filter";
+import { ProductModel } from '../../../../core/models/product.model';
 
 @Component({
   selector: 'app-products-list',
@@ -34,5 +35,12 @@ export class ProductsList implements OnInit {
     order: 'asc' | 'desc' | null
   }) {
     this.productStore.changeSort(event.sortBy, event.order);
+  }
+
+  getOldPrice(product: ProductModel) {
+    return Math.round(
+      product.price /
+      (1 - product.discountPercentage / 100)
+    );
   }
 }

@@ -66,6 +66,10 @@ export class ProductStore {
   this.state().filter
 );
 
+  readonly currentPage = computed(() => {
+    return this.state().pagination.skip / this.state().pagination.limit + 1;
+  })
+
   totalPages = computed(() => {
     const p = this.pageInfo();
     return Math.ceil(p.total / p.limit);
@@ -321,6 +325,9 @@ export class ProductStore {
   }
 
   changePage(page: number): void {
+
+    if (page === this.currentPage()) return;
+    
     this.state.update(state => ({
       ...state,
       pagination: {

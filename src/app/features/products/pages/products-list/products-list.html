@@ -1,10 +1,12 @@
 <div class="products-page">
-    <input #searchBox type="text" placeholder="Search products..." [value]="productStore.query()" (input)="onSearch(searchBox.value)">
-
-    <app-product-filter
-    (categoryChange)="changeCategory($event)"
-    (sortChange)="changeSort($event)"
-    ></app-product-filter>
+    <div class="products-toolbar">
+        <input #searchBox type="text" placeholder="Search products..." [value]="productStore.query()" (input)="onSearch(searchBox.value)">
+    
+        <app-product-filter
+        (categoryChange)="changeCategory($event)"
+        (sortChange)="changeSort($event)"
+        ></app-product-filter>
+    </div>
 
     @if (productStore.isLoading()) {
         <p>Loading products...</p>
@@ -19,14 +21,70 @@
 
         @for (product of productStore.allProducts(); track product.id) {
             <div class="product-card">
-                <img [src]="product.thumbnail" alt="Product Thumbnail">
 
-                <h3>{{product.title}}</h3>
-                <p>{{product.price}}$</p>
+                <div class="image-wrapper">
+
+                    <img [src]="product.thumbnail" alt="Product Thumbnail">
+
+                    <span class="discount-badge">
+                        -{{product.discountPercentage}}%
+                    </span>
+
+                </div>
+
+
+                <div class="product-info">
+
+                    <span class="category-badge">
+                        {{product.category}}
+                    </span>
+
+
+                    <h3>
+                        {{product.title}}
+                    </h3>
+
+
+                    <div class="rating">
+                        ⭐ {{product.rating}}
+                    </div>
+
+
+                    <div class="price-section">
+
+                        <span class="current-price">
+                            {{product.price}}$
+                        </span>
+
+                        @if(product.discountPercentage > 0) {
+                            <span class="old-price">
+                                {{getOldPrice(product)}}$
+                            </span>
+                        }
+
+
+                    </div>
+
+
+                    <span 
+                    class="stock"
+                    [class.out-of-stock]="product.stock === 0">
+
+                    {{ product.stock > 0 
+                        ? 'In Stock'
+                        : 'Out of Stock'
+                    }}
+
+                    </span>
+
+
+                </div>
+
 
                 <button [routerLink]="['/products', product.id]">
                     View Details
                 </button>
+
             </div>
         }
      </div>
@@ -35,6 +93,7 @@
      <div class="pagination">
         @for (page of productStore.pages(); track page) {
             <button
+                [class.active]="page === productStore.currentPage()"
                 (click)="goToPage(page)"
                 >
                 {{page}}

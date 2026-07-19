@@ -1,27 +1,30 @@
-<select (change)="onCategoryChange($event)">
+<div class="filter-container">
+
+  <select (change)="onCategoryChange($event)">
     <option value="">All Categories</option>
 
     <option value="smartphones">
-        Smartphones
+      Smartphones
     </option>
 
     <option value="laptops">
-        Laptops
+      Laptops
+    </option>
+  </select>
+
+
+  <select (change)="onSortChange($event)">
+    <option value="none">
+      None
     </option>
 
-</select>
+    <option value="price-asc">
+      Price Low to High
+    </option>
 
+    <option value="price-desc">
+      Price High to Low
+    </option>
+  </select>
 
-<select (change)="onSortChange($event)">
-  <option value="none">
-    None
-  </option>
-
-  <option value="price-asc">
-    Price Low to High
-  </option>
-
-  <option value="price-desc">
-    Price High to Low
-  </option>
-</select>
+</div>
